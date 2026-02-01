@@ -4,7 +4,7 @@ import { Button } from '../../common/Button';
 import { Input } from '../../common/Input';
 import { Label } from '../../common/Label';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../../common/Card';
-import { ChevronRight, ChevronLeft, Upload, CheckCircle } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Upload, CheckCircle, AlertCircle } from 'lucide-react';
 
 export function RegisterForm() {
   const { register } = useAuth();
@@ -95,14 +95,44 @@ export function RegisterForm() {
     if (!validateStep2()) return;
 
     setIsLoading(true);
+    setErrors({}); // Clear previous errors
+
     try {
-      // Prepare data for submission (handling files if needed)
-      // For logging purposes, we'll just log the object structure
-      // In a real app, use FormData for file uploads
-      
-      await register(formData);
+      // Prepare payload for backend
+      const payload = {
+        email: formData.email,
+        password: formData.password,
+        role: formData.role,
+      };
+
+      if (formData.role === 'student') {
+        payload.name = formData.fullName;
+        payload.collegeId = formData.studentId;
+        payload.branch = formData.fieldOfStudy;
+        payload.graduationYear = parseInt(formData.graduationYear);
+        payload.skills = formData.skills.split(',').map(s => s.trim()).filter(Boolean);
+        // Note: Real file upload would require FormData and a different API endpoint or handling
+        // For now, sending filename as string to match schema type
+        payload.resume = formData.cv ? formData.cv.name : ''; 
+      } else {
+        // Company
+        payload.name = formData.companyName; // Main user name becomes Company Name
+        payload.companyDetails = {
+          registrationNumber: formData.registrationNumber,
+          industryType: formData.industryType,
+          companySize: formData.companySize,
+          websiteUrl: formData.websiteUrl,
+          description: formData.companyDescription,
+          contactPerson: formData.contactPerson || formData.fullName
+        };
+      }
+
+      console.log("Sending Register Payload:", payload);
+      await register(payload);
     } catch (error) {
       console.error(error);
+      const msg = error.response?.data?.message || 'Registration failed';
+      setErrors({ submit: msg });
     } finally {
       setIsLoading(false);
     }
@@ -122,6 +152,13 @@ export function RegisterForm() {
           <div className={`h-2 flex-1 rounded-full ${step >= 1 ? 'bg-blue-600' : 'bg-slate-200'}`}></div>
           <div className={`h-2 flex-1 rounded-full ${step >= 2 ? 'bg-blue-600' : 'bg-slate-200'}`}></div>
         </div>
+
+        {errors.submit && (
+          <div className="mb-4 p-3 bg-red-50 text-red-700 text-sm rounded-md flex items-center gap-2">
+            <AlertCircle className="h-4 w-4" />
+            {errors.submit}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {step === 1 && (
