@@ -31,7 +31,7 @@ export default function CreateDrive() {
     try {
       await driveService.createDrive(formData);
       alert("Drive created successfully!");
-      navigate('/company/dashboard');
+      navigate('/company/drives');
     } catch (error) {
       alert("Failed to create drive. Please check inputs.");
     } finally {

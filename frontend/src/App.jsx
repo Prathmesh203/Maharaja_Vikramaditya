@@ -15,6 +15,9 @@ import { AdminDashboard } from './pages/AdminDashboard';
 import CompanyDashboard from './pages/CompanyDashboard';
 import CompanyProfile from './pages/company/CompanyProfile';
 import CreateDrive from './pages/company/CreateDrive';
+import MyDrives from './pages/company/MyDrives';
+import DriveApplicants from './pages/company/DriveApplicants';
+import DriveDetails from './pages/company/DriveDetails';
 
 // Student Pages
 import StudentHome from './pages/student/StudentHome';
@@ -74,6 +77,14 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={['company']} requireApproval={true}>
               <MyDrives />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/company/drives/:driveId" 
+          element={
+            <ProtectedRoute allowedRoles={['company']} requireApproval={true}>
+              <DriveDetails />
             </ProtectedRoute>
           } 
         />
