@@ -48,7 +48,32 @@ export function Layout({ children }) {
                   </div>
                 )}
 
-                {user.role !== 'student' && (
+                {user.role === 'company' && (
+                  <div className="hidden md:flex items-center gap-1 mr-4">
+                    <Link to="/company/dashboard">
+                      <Button variant="ghost" size="sm" className={location.pathname.endsWith('/dashboard') ? 'bg-slate-100' : ''}>
+                        <Home className="h-4 w-4 mr-2" /> Dashboard
+                      </Button>
+                    </Link>
+                    <Link to="/company/drives">
+                      <Button variant="ghost" size="sm" className={location.pathname.includes('/drives') ? 'bg-slate-100' : ''}>
+                        <Briefcase className="h-4 w-4 mr-2" /> My Drives
+                      </Button>
+                    </Link>
+                    <Link to="/company/create-drive">
+                      <Button variant="ghost" size="sm" className={location.pathname.includes('/create-drive') ? 'bg-slate-100' : ''}>
+                        <Briefcase className="h-4 w-4 mr-2" /> Post Job
+                      </Button>
+                    </Link>
+                    <Link to="/company/profile">
+                      <Button variant="ghost" size="sm" className={location.pathname.includes('/profile') ? 'bg-slate-100' : ''}>
+                        <UserCircle className="h-4 w-4 mr-2" /> Profile
+                      </Button>
+                    </Link>
+                  </div>
+                )}
+
+                {user.role === 'admin' && (
                   <Link to={getDashboardLink()} className="text-sm font-medium hover:text-blue-600 transition-colors">
                     Dashboard
                   </Link>

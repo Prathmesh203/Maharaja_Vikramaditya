@@ -27,11 +27,8 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Handle specific error cases (e.g., 401 Unauthorized)
     if (error.response && error.response.status === 401) {
-      // Clear token and redirect to login if needed
-      // localStorage.removeItem('token');
-      // window.location.href = '/login';
+      // Handle Unauthorized
     }
     return Promise.reject(error);
   }
@@ -54,6 +51,7 @@ export const applicationService = {
   apply: (driveId) => api.post('/applications', { driveId }),
   getMyApplications: () => api.get('/applications/my'),
   getDriveApplications: (driveId) => api.get(`/applications/drive/${driveId}`),
+  updateStatus: (appId, status) => api.put(`/applications/${appId}/status`, { status }), // New method
   getStats: () => api.get('/applications/stats'),
 };
 

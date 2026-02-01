@@ -69,6 +69,22 @@ function App() {
             </ProtectedRoute>
           } 
         />
+        <Route 
+          path="/company/drives" 
+          element={
+            <ProtectedRoute allowedRoles={['company']} requireApproval={true}>
+              <MyDrives />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/company/drives/:driveId/applicants" 
+          element={
+            <ProtectedRoute allowedRoles={['company']} requireApproval={true}>
+              <DriveApplicants />
+            </ProtectedRoute>
+          } 
+        />
 
         {/* Student Routes */}
         <Route 

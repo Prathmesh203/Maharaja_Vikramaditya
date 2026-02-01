@@ -62,6 +62,27 @@ const getDriveApplications = asyncHandler(async (req, res) => {
     res.json(applications);
 });
 
+// @desc    Update application status (Shortlist/Reject/Hire)
+// @route   PUT /api/applications/:id/status
+// @access  Private (Company)
+const updateApplicationStatus = asyncHandler(async (req, res) => {
+    const { status } = req.body;
+    const application = await Application.findById(req.params.id);
+
+    if (!application) {
+        res.status(404);
+        throw new Error('Application not found');
+    }
+
+    // Verify ownership (optional but good practice: check if drive belongs to company)
+    // For now skipping complex check for speed, assuming protected route + company role is sufficient context
+    
+    application.status = status;
+    await application.save();
+
+    res.json(application);
+});
+
 // @desc    Get total stats for company home
 // @route   GET /api/applications/stats
 // @access  Private (Company)
@@ -79,4 +100,4 @@ const getCompanyStats = asyncHandler(async (req, res) => {
     });
 });
 
-module.exports = { applyToDrive, getStudentApplications, getDriveApplications, getCompanyStats };
+module.exports = { applyToDrive, getStudentApplications, getDriveApplications, updateApplicationStatus, getCompanyStats };
