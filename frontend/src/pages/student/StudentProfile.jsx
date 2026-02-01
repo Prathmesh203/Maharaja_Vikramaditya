@@ -8,15 +8,16 @@ import { Save } from 'lucide-react';
 
 export default function StudentProfile() {
   const { user, updateUser } = useAuth();
-  const [isEditing, setIsEditing] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: user?.name || '',
-    email: user?.email || '',
-    phone: user?.phone || '',
     collegeId: user?.collegeId || '',
     branch: user?.branch || '',
     cgpa: user?.cgpa || '',
-    skills: user?.skills || '',
+    graduationYear: user?.graduationYear || '',
+    skills: user?.skills ? user.skills.join(', ') : '',
+    resume: user?.resume || '',
   });
 
   const handleChange = (e) => {
@@ -24,13 +25,18 @@ export default function StudentProfile() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Validate fields...
-    updateUser(formData);
-    setIsEditing(false);
-    // In real app, API call to save profile
-    console.log("Profile updated:", formData);
+    setIsLoading(true);
+    try {
+      await updateUser(formData);
+      setIsEditing(false);
+      alert("Profile updated successfully!");
+    } catch (error) {
+      alert("Failed to update profile.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -60,6 +66,7 @@ export default function StudentProfile() {
                   value={formData.name}
                   onChange={handleChange}
                   disabled={!isEditing}
+                  required
                 />
               </div>
               <div className="space-y-2">
@@ -67,19 +74,19 @@ export default function StudentProfile() {
                 <Input
                   id="email"
                   name="email"
-                  value={formData.email}
-                  disabled={true} // Email usually immutable
+                  value={user?.email || ''}
+                  disabled={true} 
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="phone">Phone Number</Label>
+                <Label htmlFor="resume">Resume Link (Drive/Dropbox URL)</Label>
                 <Input
-                  id="phone"
-                  name="phone"
-                  value={formData.phone}
+                  id="resume"
+                  name="resume"
+                  value={formData.resume}
                   onChange={handleChange}
                   disabled={!isEditing}
-                  placeholder="+91 98765 43210"
+                  placeholder="https://..."
                 />
               </div>
             </div>
@@ -108,10 +115,23 @@ export default function StudentProfile() {
                   />
                 </div>
                 <div className="space-y-2">
+                  <Label htmlFor="graduationYear">Graduation Year</Label>
+                  <Input
+                    id="graduationYear"
+                    name="graduationYear"
+                    type="number"
+                    value={formData.graduationYear}
+                    onChange={handleChange}
+                    disabled={!isEditing}
+                  />
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="cgpa">CGPA</Label>
                   <Input
                     id="cgpa"
                     name="cgpa"
+                    type="number"
+                    step="0.01"
                     value={formData.cgpa}
                     onChange={handleChange}
                     disabled={!isEditing}
@@ -121,7 +141,7 @@ export default function StudentProfile() {
             </div>
 
             <div className="space-y-2 pt-4 border-t">
-              <h3 className="font-medium text-lg">Skills & Experience</h3>
+              <h3 className="font-medium text-lg">Skills</h3>
               <div className="space-y-2">
                 <Label htmlFor="skills">Skills (Comma separated)</Label>
                 <Input
@@ -138,8 +158,8 @@ export default function StudentProfile() {
         </CardContent>
         {isEditing && (
           <CardFooter className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setIsEditing(false)}>Cancel</Button>
-            <Button type="submit" form="profile-form">
+            <Button variant="outline" onClick={() => setIsEditing(false)} disabled={isLoading}>Cancel</Button>
+            <Button type="submit" form="profile-form" isLoading={isLoading}>
               <Save className="h-4 w-4 mr-2" /> Save Changes
             </Button>
           </CardFooter>

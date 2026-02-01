@@ -57,4 +57,10 @@ export const applicationService = {
   getStats: () => api.get('/applications/stats'),
 };
 
+export const adminService = {
+  getStats: () => api.get('/admin/stats'),
+  getPendingUsers: (role) => api.get(`/admin/pending${role ? `?role=${role}` : ''}`),
+  updateUserStatus: (userId, status) => api.put(`/admin/users/${userId}/status`, { status }),
+};
+
 export default api;

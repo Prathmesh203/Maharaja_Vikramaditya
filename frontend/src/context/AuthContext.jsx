@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { authService } from '../services/api';
 
 const AuthContext = createContext(null);
 
@@ -7,6 +8,7 @@ const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutes
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true); // Loading state for initial auth check
   const navigate = useNavigate();
   const [sessionTimer, setSessionTimer] = useState(null);
 
@@ -32,110 +34,89 @@ export const AuthProvider = ({ children }) => {
     };
   }, [resetSessionTimer]);
 
-  const login = async (email, password) => {
-    console.log(`Attempting login with ${email}`);
-    
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        let role = 'student';
-        let name = 'Student User';
-        let status = 'approved'; // pending | approved | rejected
-        let mockData = {};
-
-        // Mock Logic based on email pattern
-        if (email === 'admin@campushire.com' && password === 'admin123') {
-          role = 'admin';
-          name = 'System Administrator';
-          status = 'approved';
-        } else if (email.includes('admin')) {
-             // Fallback for easy testing
-             role = 'admin';
-             name = 'Admin User';
-             status = 'approved';
-        } else if (email.includes('company')) {
-          role = 'company';
-          name = 'Tech Corp';
-          // Make company pending if email contains 'pending'
-          status = email.includes('pending') ? 'pending' : 'approved';
-          mockData = { trustScore: 85 };
-        } else {
-          // Student
-          role = 'student';
-          name = 'Student User';
-          // Make student pending if email contains 'pending'
-          status = email.includes('pending') ? 'pending' : 'approved';
-          mockData = { cgpa: 8.5, readinessScore: 72, profileCompleted: false };
+  // Initial Auth Check
+  useEffect(() => {
+    const checkAuth = async () => {
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          const res = await authService.getProfile();
+          setUser(res.data);
+        } catch (error) {
+          console.error("Session expired or invalid token");
+          localStorage.removeItem('token');
         }
+      }
+      setLoading(false);
+    };
+    checkAuth();
+  }, []);
 
-        const userData = {
-          id: Date.now().toString(),
-          name,
-          email,
-          role,
-          status,
-          ...mockData
-        };
+  const login = async (email, password) => {
+    try {
+      const res = await authService.login(email, password);
+      const userData = res.data;
+      
+      localStorage.setItem('token', userData.token);
+      setUser(userData);
+      
+      // Redirect based on role
+      if (userData.role === 'admin') navigate('/admin/dashboard');
+      else if (userData.role === 'company') navigate('/company/dashboard');
+      else navigate('/student/home');
 
-        setUser(userData);
-        console.log('Login successful:', userData);
-        
-        // Initial Redirection Logic handled by ProtectedRoute, 
-        // but we can help steer them to the right landing page here too.
-        if (role === 'admin') navigate('/admin/dashboard');
-        else if (role === 'company') navigate('/company/dashboard');
-        else navigate('/student/home'); // Student Home as per requirements
-        
-        resolve(userData);
-      }, 1000);
-    });
+      return userData;
+    } catch (error) {
+      throw error;
+    }
   };
 
   const register = async (data) => {
-    console.log('Registering User (JSON Payload):');
-    console.log(JSON.stringify(data, null, 2));
-    
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        if (data.role === 'student') {
-             // Automatic approval for students (as per previous requirement), 
-             // but current req says "Restrict student dashboard... until admin approves".
-             // Let's assume 'pending' by default for new registrations if admin approval is strictly required.
-             // However, the prompt says "Implement automatic approval for student accounts" in the previous turn,
-             // BUT "Restrict student dashboard access... until admin approves" in the CURRENT turn.
-             // I will prioritize the CURRENT turn's requirement for stricter control.
-             // So, new students are 'pending'.
-             
-             const userData = {
-                id: Date.now().toString(),
-                name: data.fullName,
-                email: data.email,
-                role: 'student',
-                status: 'pending', // Pending admin approval
-                cgpa: data.cgpa || 0,
-                readinessScore: 50,
-                profileCompleted: true // Assuming reg form fills minimal profile
-             };
-             setUser(userData);
-             navigate('/student/profile'); // Send to profile or home
-        } else {
-            // Company - pending approval
-            navigate('/login', { state: { message: 'Registration successful! Please wait for admin approval.' } });
-        }
-        resolve({ success: true });
-      }, 1500);
-    });
+    try {
+      const res = await authService.register(data);
+      const userData = res.data;
+      
+      localStorage.setItem('token', userData.token);
+      setUser(userData);
+
+      if (userData.role === 'student') {
+           navigate('/student/profile');
+      } else {
+           // Company often pending
+           if (userData.status === 'pending') {
+               navigate('/login', { state: { message: 'Registration successful! Please wait for admin approval.' } });
+               logout(); // Force logout so they can't access yet
+           } else {
+               navigate('/company/dashboard');
+           }
+      }
+      return userData;
+    } catch (error) {
+      throw error;
+    }
   };
 
   const logout = () => {
+    localStorage.removeItem('token');
     setUser(null);
     if (sessionTimer) clearTimeout(sessionTimer);
     navigate('/login');
   };
 
-  // Helper to update user data (e.g. after profile update)
-  const updateUser = (updates) => {
-    setUser(prev => ({ ...prev, ...updates }));
+  const updateUser = async (data) => {
+    try {
+      const res = await authService.updateProfile(data);
+      setUser(res.data);
+      return res.data;
+    } catch (error) {
+      console.error("Failed to update profile", error);
+      throw error;
+    }
   };
+
+  if (loading) {
+      return <div className="flex h-screen items-center justify-center">Loading...</div>;
+  }
 
   return (
     <AuthContext.Provider value={{ user, login, register, logout, updateUser, isAuthenticated: !!user }}>

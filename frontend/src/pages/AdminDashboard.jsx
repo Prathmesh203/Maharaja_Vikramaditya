@@ -1,40 +1,59 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/common/Card';
 import { Button } from '../components/common/Button';
-import { CheckCircle, XCircle, Shield, Building2, User, Eye } from 'lucide-react';
+import { CheckCircle, XCircle, Shield, Building2, User, Eye, RefreshCw } from 'lucide-react';
+import { adminService } from '../services/api';
 
 export function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('companies');
-  
-  // Mock Data
-  const [pendingCompanies, setPendingCompanies] = useState([
-    { id: 1, name: 'Innovate Tech', regNo: 'REG123456', type: 'IT', email: 'contact@innovate.com', status: 'pending' },
-    { id: 2, name: 'BuildWell Constructions', regNo: 'REG789012', type: 'Manufacturing', email: 'hr@buildwell.com', status: 'pending' },
-  ]);
+  const [stats, setStats] = useState({ totalCompanies: 0, totalStudents: 0, pendingApprovals: 0 });
+  const [pendingCompanies, setPendingCompanies] = useState([]);
+  const [pendingStudents, setPendingStudents] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const [pendingStudents, setPendingStudents] = useState([
-    { id: 101, name: 'Alice Smith', collegeId: 'CS2024001', branch: 'CSE', cgpa: 8.9, status: 'pending' },
-    { id: 102, name: 'Bob Johnson', collegeId: 'ME2024045', branch: 'MECH', cgpa: 7.5, status: 'pending' },
-  ]);
-
-  const handleApprove = (id, type) => {
-    if (type === 'company') {
-      setPendingCompanies(prev => prev.filter(c => c.id !== id));
-      // API call to approve would go here
-      console.log(`Approved company ${id}`);
-    } else {
-      setPendingStudents(prev => prev.filter(s => s.id !== id));
-      console.log(`Approved student ${id}`);
+  const fetchStats = async () => {
+    try {
+      const res = await adminService.getStats();
+      setStats(res.data);
+    } catch (error) {
+      console.error("Failed to fetch stats", error);
     }
   };
 
-  const handleReject = (id, type) => {
-    if (type === 'company') {
-      setPendingCompanies(prev => prev.filter(c => c.id !== id));
-      console.log(`Rejected company ${id}`);
-    } else {
-      setPendingStudents(prev => prev.filter(s => s.id !== id));
-      console.log(`Rejected student ${id}`);
+  const fetchPending = async () => {
+    setLoading(true);
+    try {
+      const [companiesRes, studentsRes] = await Promise.all([
+        adminService.getPendingUsers('company'),
+        adminService.getPendingUsers('student')
+      ]);
+      setPendingCompanies(companiesRes.data);
+      setPendingStudents(studentsRes.data);
+    } catch (error) {
+      console.error("Failed to fetch pending users", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchStats();
+    fetchPending();
+  }, []);
+
+  const handleStatusUpdate = async (id, status, type) => {
+    try {
+      await adminService.updateUserStatus(id, status);
+      // Optimistic update
+      if (type === 'company') {
+        setPendingCompanies(prev => prev.filter(c => c._id !== id));
+      } else {
+        setPendingStudents(prev => prev.filter(s => s._id !== id));
+      }
+      fetchStats(); // Refresh stats
+      alert(`User ${status} successfully`);
+    } catch (error) {
+      alert("Failed to update status");
     }
   };
 
@@ -45,6 +64,9 @@ export function AdminDashboard() {
           <h1 className="text-3xl font-bold tracking-tight text-slate-900">Admin Dashboard</h1>
           <p className="text-slate-500">Manage system approvals and user access.</p>
         </div>
+        <Button variant="outline" onClick={() => { fetchStats(); fetchPending(); }}>
+            <RefreshCw className="h-4 w-4 mr-2" /> Refresh Data
+        </Button>
       </div>
 
       {/* Stats Overview */}
@@ -55,7 +77,7 @@ export function AdminDashboard() {
             <Shield className="h-4 w-4 text-orange-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{pendingCompanies.length + pendingStudents.length}</div>
+            <div className="text-2xl font-bold">{stats.pendingApprovals}</div>
             <p className="text-xs text-slate-500">Action required</p>
           </CardContent>
         </Card>
@@ -65,7 +87,7 @@ export function AdminDashboard() {
             <Building2 className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">124</div>
+            <div className="text-2xl font-bold">{stats.totalCompanies}</div>
             <p className="text-xs text-slate-500">Active on platform</p>
           </CardContent>
         </Card>
@@ -75,7 +97,7 @@ export function AdminDashboard() {
             <User className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">1,432</div>
+            <div className="text-2xl font-bold">{stats.totalStudents}</div>
             <p className="text-xs text-slate-500">Registered this year</p>
           </CardContent>
         </Card>
@@ -108,85 +130,89 @@ export function AdminDashboard() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {activeTab === 'companies' && (
-              pendingCompanies.length === 0 ? (
-                <p className="text-slate-500 text-center py-4">No pending company approvals.</p>
-              ) : (
-                pendingCompanies.map(company => (
-                  <div key={company.id} className="flex flex-col md:flex-row justify-between items-start md:items-center p-4 border rounded-lg gap-4">
-                    <div>
-                      <h4 className="font-semibold text-lg">{company.name}</h4>
-                      <div className="text-sm text-slate-500 grid grid-cols-2 gap-x-4 gap-y-1 mt-1">
-                        <span>Reg No: {company.regNo}</span>
-                        <span>Type: {company.type}</span>
-                        <span>Email: {company.email}</span>
-                      </div>
+          {loading ? (
+              <div className="text-center py-4">Loading pending requests...</div>
+          ) : (
+            <div className="space-y-4">
+                {activeTab === 'companies' && (
+                pendingCompanies.length === 0 ? (
+                    <p className="text-slate-500 text-center py-4">No pending company approvals.</p>
+                ) : (
+                    pendingCompanies.map(company => (
+                    <div key={company._id} className="flex flex-col md:flex-row justify-between items-start md:items-center p-4 border rounded-lg gap-4">
+                        <div>
+                        <h4 className="font-semibold text-lg">{company.name}</h4>
+                        <div className="text-sm text-slate-500 grid grid-cols-2 gap-x-4 gap-y-1 mt-1">
+                            <span>Reg No: {company.companyDetails?.registrationNumber || 'N/A'}</span>
+                            <span>Type: {company.companyDetails?.industryType || 'N/A'}</span>
+                            <span>Email: {company.email}</span>
+                        </div>
+                        </div>
+                        <div className="flex items-center gap-2 w-full md:w-auto">
+                        <Button variant="outline" size="sm" className="flex-1 md:flex-none">
+                            <Eye className="h-4 w-4 mr-2" /> View Docs
+                        </Button>
+                        <Button 
+                            size="sm" 
+                            className="bg-green-600 hover:bg-green-700 flex-1 md:flex-none"
+                            onClick={() => handleStatusUpdate(company._id, 'approved', 'company')}
+                        >
+                            <CheckCircle className="h-4 w-4 mr-2" /> Approve
+                        </Button>
+                        <Button 
+                            variant="destructive" 
+                            size="sm"
+                            className="flex-1 md:flex-none"
+                            onClick={() => handleStatusUpdate(company._id, 'rejected', 'company')}
+                        >
+                            <XCircle className="h-4 w-4 mr-2" /> Reject
+                        </Button>
+                        </div>
                     </div>
-                    <div className="flex items-center gap-2 w-full md:w-auto">
-                      <Button variant="outline" size="sm" className="flex-1 md:flex-none">
-                        <Eye className="h-4 w-4 mr-2" /> View Docs
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        className="bg-green-600 hover:bg-green-700 flex-1 md:flex-none"
-                        onClick={() => handleApprove(company.id, 'company')}
-                      >
-                        <CheckCircle className="h-4 w-4 mr-2" /> Approve
-                      </Button>
-                      <Button 
-                        variant="destructive" 
-                        size="sm"
-                        className="flex-1 md:flex-none"
-                        onClick={() => handleReject(company.id, 'company')}
-                      >
-                        <XCircle className="h-4 w-4 mr-2" /> Reject
-                      </Button>
-                    </div>
-                  </div>
-                ))
-              )
-            )}
+                    ))
+                )
+                )}
 
-            {activeTab === 'students' && (
-              pendingStudents.length === 0 ? (
-                <p className="text-slate-500 text-center py-4">No pending student approvals.</p>
-              ) : (
-                pendingStudents.map(student => (
-                  <div key={student.id} className="flex flex-col md:flex-row justify-between items-start md:items-center p-4 border rounded-lg gap-4">
-                    <div>
-                      <h4 className="font-semibold text-lg">{student.name}</h4>
-                      <div className="text-sm text-slate-500 grid grid-cols-2 gap-x-4 gap-y-1 mt-1">
-                        <span>ID: {student.collegeId}</span>
-                        <span>Branch: {student.branch}</span>
-                        <span>CGPA: {student.cgpa}</span>
-                      </div>
+                {activeTab === 'students' && (
+                pendingStudents.length === 0 ? (
+                    <p className="text-slate-500 text-center py-4">No pending student approvals.</p>
+                ) : (
+                    pendingStudents.map(student => (
+                    <div key={student._id} className="flex flex-col md:flex-row justify-between items-start md:items-center p-4 border rounded-lg gap-4">
+                        <div>
+                        <h4 className="font-semibold text-lg">{student.name}</h4>
+                        <div className="text-sm text-slate-500 grid grid-cols-2 gap-x-4 gap-y-1 mt-1">
+                            <span>ID: {student.collegeId || 'N/A'}</span>
+                            <span>Branch: {student.branch || 'N/A'}</span>
+                            <span>CGPA: {student.cgpa || 'N/A'}</span>
+                        </div>
+                        </div>
+                        <div className="flex items-center gap-2 w-full md:w-auto">
+                        <Button variant="outline" size="sm" className="flex-1 md:flex-none">
+                            View Profile
+                        </Button>
+                        <Button 
+                            size="sm" 
+                            className="bg-green-600 hover:bg-green-700 flex-1 md:flex-none"
+                            onClick={() => handleStatusUpdate(student._id, 'approved', 'student')}
+                        >
+                            Approve
+                        </Button>
+                        <Button 
+                            variant="destructive" 
+                            size="sm"
+                            className="flex-1 md:flex-none"
+                            onClick={() => handleStatusUpdate(student._id, 'rejected', 'student')}
+                        >
+                            Reject
+                        </Button>
+                        </div>
                     </div>
-                    <div className="flex items-center gap-2 w-full md:w-auto">
-                      <Button variant="outline" size="sm" className="flex-1 md:flex-none">
-                        View Profile
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        className="bg-green-600 hover:bg-green-700 flex-1 md:flex-none"
-                        onClick={() => handleApprove(student.id, 'student')}
-                      >
-                        Approve
-                      </Button>
-                      <Button 
-                        variant="destructive" 
-                        size="sm"
-                        className="flex-1 md:flex-none"
-                        onClick={() => handleReject(student.id, 'student')}
-                      >
-                        Reject
-                      </Button>
-                    </div>
-                  </div>
-                ))
-              )
-            )}
-          </div>
+                    ))
+                )
+                )}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

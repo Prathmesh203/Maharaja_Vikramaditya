@@ -46,6 +46,28 @@ const registerUser = asyncHandler(async (req, res) => {
 const loginUser = asyncHandler(async (req, res) => {
      const { email, password } = req.body;
 
+     // Hardcoded Admin Check
+     if (email === 'admin@campushire.com' && password === 'admin123') {
+          // Create a temporary admin user instance to generate token
+          const adminUser = new User({
+               _id: '000000000000000000000000', // Mock Object ID
+               name: 'System Administrator',
+               email: 'admin@campushire.com',
+               role: 'admin',
+               status: 'approved'
+          });
+
+          res.json({
+               _id: adminUser._id,
+               name: adminUser.name,
+               email: adminUser.email,
+               role: adminUser.role,
+               status: adminUser.status,
+               token: adminUser.generateAuthToken()
+          });
+          return;
+     }
+
      const user = await User.findOne({ email });
 
      // Compare plain text password directly
@@ -65,6 +87,9 @@ const loginUser = asyncHandler(async (req, res) => {
 
 
 const getUserProfile = asyncHandler(async (req, res) => {
+     if (req.user._id === '000000000000000000000000') {
+          return res.json(req.user);
+     }
      const user = await User.findById(req.user._id).select('-password');
      if(!user){
               res.status(400).json({message:"User not found."});

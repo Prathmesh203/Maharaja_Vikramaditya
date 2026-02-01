@@ -13,9 +13,10 @@ import { AdminDashboard } from './pages/AdminDashboard';
 
 // Company Pages
 import CompanyDashboard from './pages/CompanyDashboard';
+import CompanyProfile from './pages/company/CompanyProfile';
+import CreateDrive from './pages/company/CreateDrive';
 
 // Student Pages
-import StudentDashboard from './pages/StudentDashboard'; // Keeping legacy dash as "Overview" or similar if needed, but routing new pages
 import StudentHome from './pages/student/StudentHome';
 import StudentProfile from './pages/student/StudentProfile';
 import StudentApply from './pages/student/StudentApply';
@@ -52,9 +53,24 @@ function App() {
             </ProtectedRoute>
           } 
         />
+        <Route 
+          path="/company/profile" 
+          element={
+            <ProtectedRoute allowedRoles={['company']} requireApproval={true}>
+              <CompanyProfile />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/company/create-drive" 
+          element={
+            <ProtectedRoute allowedRoles={['company']} requireApproval={true}>
+              <CreateDrive />
+            </ProtectedRoute>
+          } 
+        />
 
         {/* Student Routes */}
-        {/* Student Dashboard Wrapper could be added here if side-nav is needed */}
         <Route 
           path="/student/dashboard" 
           element={<Navigate to="/student/home" replace />} 
@@ -73,7 +89,6 @@ function App() {
           path="/student/profile" 
           element={
             <ProtectedRoute allowedRoles={['student']} requireApproval={false}> 
-              {/* Profile is accessible even if unapproved */}
               <StudentProfile />
             </ProtectedRoute>
           } 
@@ -83,7 +98,6 @@ function App() {
           path="/student/apply" 
           element={
             <ProtectedRoute allowedRoles={['student']} requireApproval={false}>
-              {/* Apply page handles its own "Pending" state UI internally as requested */}
               <StudentApply />
             </ProtectedRoute>
           } 
